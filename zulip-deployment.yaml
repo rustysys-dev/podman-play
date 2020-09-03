@@ -1,0 +1,152 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: zulip
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_DB
+          value: zulip
+        - name: POSTGRES_PASSWORD
+          value: __POSTGRE_SECURE_PASSWORD
+        - name: POSTGRES_USER
+          value: zulip
+        image: zulip/zulip-postgresql:10
+        name: database
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-hostpath0
+      - env:
+        - name: DB_HOST
+          value: zulip-pod-0
+        - name: DB_HOST_PORT
+          value: "5432"
+        - name: DB_USER
+          value: zulip
+        - name: SECRETS_email_password
+          value: __EMAIL_USER_PASSWORD
+        - name: SECRETS_memcached_password
+          value: __MEMCACHED_SECURE_PASSWORD
+        - name: SECRETS_postgres_password
+          value: __POSTGRES_SECURE_PASSWORD
+        - name: SECRETS_rabbitmq_password
+          value: __RABBITMQ_SECURE_PASSWORD
+        - name: SECRETS_redis_password
+          value: __REDIS_SECURE_PASSWORD
+        - name: SECRETS_secret_key
+          value: __ZULIP_SECRET
+        - name: SECRETS_social_auth_gitlab_secret
+          value: __GITLAB_APPLICATION_SECRET
+        - name: SETTING_EMAIL_HOST
+          value: __EMAIL_SERVER_URL
+        - name: SETTING_EMAIL_HOST_USER
+          value: __EMAIL_USER_NAME
+        - name: SETTING_EMAIL_PORT
+          value: "587"
+        - name: SETTING_EMAIL_USE_SSL
+          value: "False"
+        - name: SETTING_EMAIL_USE_TLS
+          value: "True"
+        - name: SETTING_ADD_TOKENS_TO_NOREPLY_ADDRESS
+          value: "True"
+        - name: SETTING_TOKENIZED_NOREPLY_EMAIL_ADDRESS
+          value: "noreply-{token}@localhost.localdomain"
+        - name: SETTING_NOREPLY_EMAIL_ADDRESS
+          value: "noreply@localhost.localdomain"
+        - name: SETTING_EXTERNAL_HOST
+          value: __EXTERNAL_HOST_URL
+        - name: SETTING_MEMCACHED_LOCATION
+          value: zulip-pod-0:11211
+        - name: SETTING_RABBITMQ_HOST
+          value: zulip-pod-0
+        - name: SETTING_REDIS_HOST
+          value: zulip-pod-0
+        - name: SETTING_SOCIAL_AUTH_GITLAB_API_URL
+          value: __GITLAB_URL
+        - name: SETTING_SOCIAL_AUTH_GITLAB_KEY
+          value: __GITLAB_APPLICATION_KEY
+        - name: SETTING_ZULIP_ADMINISTRATOR
+          value: __ADMIN_ERROR_EMAIL
+        - name: SSL_CERTIFICATE_GENERATION
+          value: self-signed
+        - name: ZULIP_AUTH_BACKENDS
+          value: EmailAuthBackend,GitLabAuthBackend
+        image: zulip/docker-zulip:3.1-0
+        name: zulip
+        ports:
+        - containerPort: 80
+          hostPort: 8080
+        - containerPort: 443
+          hostPort: 8443
+        resources: {}
+        volumeMounts:
+        - mountPath: /data
+          name: zulip-hostpath0
+      - args:
+        - sh
+        - -euc
+        - |
+          echo "requirepass '$REDIS_PASSWORD'" > /etc/redis.conf
+          exec redis-server /etc/redis.conf
+        env:
+        - name: REDIS_PASSWORD
+          value: __REDIS_SECURE_PASSWORD
+        image: redis:alpine
+        name: redis
+        resources: {}
+        volumeMounts:
+        - mountPath: /data
+          name: redis-hostpath0
+      - args:
+        - sh
+        - -euc
+        - |
+          echo 'mech_list: plain' > "$SASL_CONF_PATH"
+          echo "zulip@$HOSTNAME:$MEMCACHED_PASSWORD" > "$MEMCACHED_SASL_PWDB"
+          echo "zulip@localhost:$MEMCACHED_PASSWORD" >> "$MEMCACHED_SASL_PWDB"
+          exec memcached -S
+        env:
+        - name: MEMCACHED_PASSWORD
+          value: __MEMCACHED_SECURE_PASSWORD
+        - name: MEMCACHED_SASL_PWDB
+          value: /home/memcache/memcached-sasl-db
+        - name: SASL_CONF_PATH
+          value: /home/memcache/memcached.conf
+        image: memcached:alpine
+        name: memcached
+        resources: {}
+      - env:
+        - name: RABBITMQ_DEFAULT_PASS
+          value: __RABBITMQ_SECURE_PASSWORD
+        - name: RABBITMQ_DEFAULT_USER
+          value: zulip
+        image: rabbitmq:3.7.7
+        name: rabbitmq
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/lib/rabbitmq
+          name: rabbitmq-hostpath0
+      restartPolicy: Always
+      volumes:
+      - hostPath:
+          path: __FULL_PATH_TO_RABBITMQ_LOCAL_STORAGE
+        name: rabbitmq-hostpath0
+      - hostPath:
+          path: __FULL_PATH_TO_REDIS_LOCAL_STORAGE
+          name: redis-hostpath0
+      - hostPath:
+          path: __FULL_PATH_TO_POSTGRES_LOCAL_STORAGE
+        name: database-hostpath0
+      - hostPath:
+          path: __FULL_PATH_TO_ZULIP_LOCAL_STORAGE
+        name: zulip-hostpath0
+status: {}
