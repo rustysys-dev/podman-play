@@ -18,7 +18,7 @@ Additional settings can be set as described [at this LINK][2]
 Deployment is as simple as:
 
 ```bash
-podman play kube zulip-deployment.yaml
+make up
 ```
 
 Deployment may take some time, and may be viewed using the following command.
@@ -49,7 +49,7 @@ $(find ./ -name manage.py) generate_realm_creation_link
 ## Destroy your pod
 
 ```bash
-podman pod rm --force zulip-pod-0
+make down
 ```
 
 [1]: https://github.com/zulip/zulip/blob/master/zproject/prod_settings_template.py
