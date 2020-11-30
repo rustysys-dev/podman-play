@@ -1,0 +1,63 @@
+apiVersion: extensions/v1beta1
+kind: Pod
+metadata:
+  name: CodiMD
+spec:
+  containers:
+  - name: database
+    image: postgres:11.6-alpine
+    env:
+    - name: POSTGRES_DB
+      value: codimd
+    - name: POSTGRES_PASSWORD
+      value: codimd_test
+    - name: POSTGRES_USER
+      value: codimd
+    volumeMounts:
+    - mountPath: /var/lib/postgresql/data:Z
+      name: database-data
+  - name: codimd
+    image: hackmdio/hackmd:2.2.0
+    env:
+    - name: CMD_ALLOW_ANONYMOUS
+      value: "false"
+    - name: CMD_ALLOW_EMAIL_REGISTER
+      value: "false"
+    - name: CMD_ALLOW_FREEURL
+      value: "false"
+    - name: CMD_ALLOW_GRAVATAR
+      value: "true"
+    - name: CMD_ALLOW_PDF_EXPORT
+      value: "true"
+    - name: CMD_DB_URL
+      value: postgres://codimd:codimd_test@localhost/codimd
+    - name: CMD_DEFAULT_PERMISSION
+      value: limited
+    - name: CMD_HOST
+      value: localhost
+    - name: CMD_IMAGE_UPLOAD_TYPE
+      value: filesystem
+    - name: CMD_PORT
+      value: "3000"
+    - name: CMD_SESSION_LIFE
+      value: "31536000000"
+    - name: CMD_SESSION_SECRET
+      value: leary-mopes-rosy-plum-arlen-piotr
+    - name: NODE_ENV
+      value: production
+    ports:
+    - containerPort: 3000
+      hostPort: 3000
+      protocol: TCP
+    volumeMounts:
+    - mountPath: /home/hackmd/app/public/uploads:Z
+      name: upload-data
+  volumes:
+  - name: database-data
+    hostPath:
+      path: /tmp/pg_data
+      type: Directory
+  - name: upload-data
+    hostPath:
+      path: /tmp/codi_data
+      type: Directory
